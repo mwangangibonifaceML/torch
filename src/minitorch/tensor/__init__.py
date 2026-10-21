@@ -5,6 +5,6 @@ deep learning capabilities (like auto differentiation and gradient tracking).
 
 """
 
-# from .tensor import Tensor
+from .tensor import Tensor
 
-# __all__ = ["Tensor"]
+__all__ = ["Tensor"]
