@@ -364,20 +364,43 @@ class Tensor:
             if result.grad is None:
                 return
 
-            grad_output = result.grad
-            # * gradient of the first input
-            if self.requires_grad:
-                if other.data.ndim >= 2:
-                    other_transpose = other.data.swapaxes(-1, -2)
-                    self._add_grad(grad_output @ other_transpose)
-                else:
-                    self._add_grad(np.outer(grad_output, other.data))
+            g = result.grad
+            a, b = self.data, other.data
 
-                if (other.requires_grad and other.data.ndim >= 2) or self.data.ndim >= 2:
-                    self_transpose = self.data.swapaxes(-1, -2)
-                    other._add_grad(self_transpose @ grad_output)
+            # 0-d operand: forward was element-wise multiplication
+            if a.ndim == 0 or b.ndim == 0:
+                if self.requires_grad:
+                    self._add_grad(g * b)
+                if other.requires_grad:
+                    other._add_grad(g * a)
+                return
+
+            # promote 1-D operands to 2-D so one formula covers every case
+            a2 = a[None, :] if a.ndim == 1 else a      # (k,)  -> (1, k)
+            b2 = b[:, None] if b.ndim == 1 else b      # (k,)  -> (k, 1)
+
+            # promote the output gradient to match the shape of a2 @ b2
+            if a.ndim == 1 and b.ndim == 1:
+                g2 = np.reshape(g, (1, 1))
+            elif a.ndim == 1:
+                g2 = np.expand_dims(g, -2)             # (..., n) -> (..., 1, n)
+            elif b.ndim == 1:
+                g2 = np.expand_dims(g, -1)             # (..., m) -> (..., m, 1)
             else:
-                other._add_grad(self.data * grad_output)
+                g2 = g
+
+            # two independent blocks (not nested, no else)
+            if self.requires_grad:
+                grad_a = g2 @ b2.swapaxes(-1, -2)      # (..., m, k)
+                if a.ndim == 1:
+                    grad_a = grad_a.squeeze(-2)        # back to (..., k)
+                self._add_grad(grad_a)                 # _add_grad unbroadcasts batch dims
+
+            if other.requires_grad:
+                grad_b = a2.swapaxes(-1, -2) @ g2      # (..., k, n)
+                if b.ndim == 1:
+                    grad_b = grad_b.squeeze(-1)        # back to (..., k)
+                other._add_grad(grad_b)
 
         result._backward = _backward
         return result
