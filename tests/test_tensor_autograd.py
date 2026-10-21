@@ -205,7 +205,7 @@ class TestElementwiseExact:
         np.testing.assert_allclose(a.grad, [-0.25, -1 / 16], rtol=1e-5)
 
     def test_pow_rejects_non_scalar_exponent(self):
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             T([1.0]) ** T([2.0])
 
     # ---- reflected / scalar operators -------------------------------------
