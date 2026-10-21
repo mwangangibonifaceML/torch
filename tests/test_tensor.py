@@ -78,7 +78,7 @@ class TestTensorCreation:
             f"1D input tensor is wrong "
             f"Input has elements (1,2,3,4) "
             f"expected shape is (4,) "
-            f"received shape {t.shape}"
+            f"received shape {t1.shape}"
         )
         assert t1.dtype == np.float32, (
             f"Wrong dtype from the input tensor Expected np.float32."
@@ -162,7 +162,7 @@ class TestTensorOperations:
 
         assert np.array_equal(result.data, expected.data), (
             f"Scalar and tensor multiplication failed "
-            f"{scalr.data} @ {vector.data} "
+            f"{scalar.data} @ {vector.data} "
             f"Expected: {expected} "
             f"Got: {result.data}"
         )
