@@ -1,7 +1,7 @@
 """
 Test suite for the minitorch layers module.
 
-Run with:  pytest -v test_nn_layers.py
+Runs with:  pytest -v test_nn_layers.py
 
 ASSUMPTIONS about minitorch.Tensor
   * Tensor(np_array, requires_grad=bool), with .data / .grad / .shape / .requires_grad
@@ -9,7 +9,6 @@ ASSUMPTIONS about minitorch.Tensor
   * scalar_tensor.backward() fills .grad on every leaf that requires grad
   * gradients accumulate across backward() calls (your code uses `_add_grad`)
 
-Change the import below to wherever your layers live.
 """
 from __future__ import annotations
 
