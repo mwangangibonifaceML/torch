@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def unbroadcast(grad, shape):
+def unbroadcast(grad: NDArray, shape: tuple[int]) -> NDArray:
     """Sum `grad` down to `shape`, undoing numpy broadcasting."""
     grad = np.asarray(grad)
     shape = tuple(shape)
@@ -76,7 +76,7 @@ class Tensor:
         self._backward = lambda: None
 
     def __repr__(self) -> str:
-        return f"Tensor(data={self.data},shape={self.shape}, requires_grad= {self.requires_grad})"
+        return f"Tensor(data={self.data}, requires_grad= {self.requires_grad})"
 
     def __str__(self) -> str:
         return f"Tensor(data={self.data})"
@@ -613,7 +613,7 @@ class Tensor:
         for node in reversed(topo):
             node._backward()
 
-    def _add_grad(self, grad: NDArray) -> Tensor | None:
+    def _add_grad(self, grad: NDArray) -> NDArray | None:
         """Accumulate the gradients"""
         if not self.requires_grad:
             return
