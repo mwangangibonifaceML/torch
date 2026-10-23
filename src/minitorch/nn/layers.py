@@ -1,10 +1,9 @@
 from __future__ import annotations
-from math import sqrt
 
 import math
 import numpy as np
 
-from typing import Iterator
+from typing import Iterator, Any
 from minitorch.tensor import Tensor
 
 EPSILON = 1e-5
