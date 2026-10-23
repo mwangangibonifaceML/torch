@@ -264,7 +264,7 @@ class Sequential(Module):
     Chain Module and Layers together. Accepts Sequential(a,b) and Sequential[a,b].
     
     """
-    def __init__(self, *layers: Tuple[Layer] | list[Layer]) -> None:
+    def __init__(self, *layers: tuple[Module] | list[Module]) -> None:
         """Initialize the Sequential container with a list of layers.
         Accepts both (layer1, layer2, ...) and ([layer1, layer2, ...]) formats.
         """
