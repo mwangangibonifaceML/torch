@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pytest
 import numpy as np
+
 from minitorch.tensor import Tensor
 
 
@@ -81,7 +81,7 @@ class TestTensorCreation:
             f"received shape {t1.shape}"
         )
         assert t1.dtype == np.float32, (
-            f"Wrong dtype from the input tensor Expected np.float32."
+            "Wrong dtype from the input tensor Expected np.float32."
         )
 
         t2 = Tensor(np.array(((1, 2, 3, 4), (5, 6, 7, 8))))
@@ -93,7 +93,7 @@ class TestTensorCreation:
         )
 
         assert t2.dtype == np.float32, (
-            f"Wrong dtype from the input tensor Expected np.float32."
+            "Wrong dtype from the input tensor Expected np.float32."
         )
 
 
