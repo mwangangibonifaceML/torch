@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
+print()
+
 
 def unbroadcast(grad: NDArray, shape: tuple[int]) -> NDArray:
     """Sum `grad` down to `shape`, undoing numpy broadcasting."""
@@ -171,10 +173,10 @@ class Tensor:
 
         def _backward():
             if self.requires_grad and result.grad is not None:
-                    self._add_grad(result.grad)
+                self._add_grad(result.grad)
 
             if other.requires_grad and result.grad is not None:
-                    other._add_grad(result.grad)
+                other._add_grad(result.grad)
 
         result._backward = _backward
         return result
@@ -240,10 +242,10 @@ class Tensor:
 
         def _backward():
             if self.requires_grad and result.grad is not None:
-                    self._add_grad(result.grad / other.data)
+                self._add_grad(result.grad / other.data)
 
             if other.requires_grad and result.grad is not None:
-                    other._add_grad(-result.grad * self.data / other.data**2)
+                other._add_grad(-result.grad * self.data / other.data**2)
 
         result._backward = _backward
         return result
@@ -263,7 +265,7 @@ class Tensor:
 
         def _backward():
             if self.requires_grad and result.grad is not None:
-                    self._add_grad(-result.grad)
+                self._add_grad(-result.grad)
 
         result._backward = _backward
         return result
@@ -280,10 +282,10 @@ class Tensor:
 
         def _backward():
             if other.requires_grad and result.grad is not None:
-                    other._add_grad(result.grad)
+                other._add_grad(result.grad)
 
             if self.requires_grad and result.grad is not None:
-                    self._add_grad(-result.grad)
+                self._add_grad(-result.grad)
 
         result._backward = _backward
         return result
@@ -303,7 +305,7 @@ class Tensor:
                 other._add_grad(result.grad / self.data)
 
             if self.requires_grad and result.grad is not None:
-                    self._add_grad(-result.grad * other.data / self.data**2)
+                self._add_grad(-result.grad * other.data / self.data**2)
 
         result._backward = _backward
         return result
@@ -311,7 +313,7 @@ class Tensor:
     def __pow__(self, other):
         if not isinstance(other, (float, int)):
             raise TypeError("Power must be either integer or a float")
-        
+
         result = Tensor(
             self.data**other,
             requires_grad=self.requires_grad,
@@ -341,10 +343,14 @@ class Tensor:
             )
 
         else:  # * 2D or higher case, perform matrix multiplication with shape checks
-            if len(self.shape) >= 2 and len(other.shape) >= 2 and self.shape[-1] != other.shape[-2]:
-                    raise ValueError(
-                        f"Incompatible shapes for matmul: {self.shape} @ {other.shape}"
-                    )
+            if (
+                len(self.shape) >= 2
+                and len(other.shape) >= 2
+                and self.shape[-1] != other.shape[-2]
+            ):
+                raise ValueError(
+                    f"Incompatible shapes for matmul: {self.shape} @ {other.shape}"
+                )
 
             result_data = np.matmul(self.data, other.data)
 
@@ -372,30 +378,30 @@ class Tensor:
                 return
 
             # promote 1-D operands to 2-D so one formula covers every case
-            a2 = a[None, :] if a.ndim == 1 else a      # (k,)  -> (1, k)
-            b2 = b[:, None] if b.ndim == 1 else b      # (k,)  -> (k, 1)
+            a2 = a[None, :] if a.ndim == 1 else a  # (k,)  -> (1, k)
+            b2 = b[:, None] if b.ndim == 1 else b  # (k,)  -> (k, 1)
 
             # promote the output gradient to match the shape of a2 @ b2
             if a.ndim == 1 and b.ndim == 1:
                 g2 = np.reshape(g, (1, 1))
             elif a.ndim == 1:
-                g2 = np.expand_dims(g, -2)             # (..., n) -> (..., 1, n)
+                g2 = np.expand_dims(g, -2)  # (..., n) -> (..., 1, n)
             elif b.ndim == 1:
-                g2 = np.expand_dims(g, -1)             # (..., m) -> (..., m, 1)
+                g2 = np.expand_dims(g, -1)  # (..., m) -> (..., m, 1)
             else:
                 g2 = g
 
             # two independent blocks (not nested, no else)
             if self.requires_grad:
-                grad_a = g2 @ b2.swapaxes(-1, -2)      # (..., m, k)
+                grad_a = g2 @ b2.swapaxes(-1, -2)  # (..., m, k)
                 if a.ndim == 1:
-                    grad_a = grad_a.squeeze(-2)        # back to (..., k)
-                self._add_grad(grad_a)                 # _add_grad unbroadcasts batch dims
+                    grad_a = grad_a.squeeze(-2)  # back to (..., k)
+                self._add_grad(grad_a)  # _add_grad unbroadcasts batch dims
 
             if other.requires_grad:
-                grad_b = a2.swapaxes(-1, -2) @ g2      # (..., k, n)
+                grad_b = a2.swapaxes(-1, -2) @ g2  # (..., k, n)
                 if b.ndim == 1:
-                    grad_b = grad_b.squeeze(-1)        # back to (..., k)
+                    grad_b = grad_b.squeeze(-1)  # back to (..., k)
                 other._add_grad(grad_b)
 
         result._backward = _backward
@@ -415,7 +421,7 @@ class Tensor:
             if result.grad is None or not self.requires_grad:
                 return
             grad = result.grad
-            #* If dimensions were removed, restore them
+            # * If dimensions were removed, restore them
             if not keepdims:
                 for ax in sorted(self._normalize_axes(axis)):
                     grad = np.expand_dims(grad, ax)
@@ -450,10 +456,12 @@ class Tensor:
         result._backward = _backward
         return result
 
-    def var(self, axis: int | None = None, keepdims: bool = False, ddof: int =1) -> Tensor:
+    def var(
+        self, axis: int | None = None, keepdims: bool = False, ddof: int = 1
+    ) -> Tensor:
         axes = self._normalize_axes(axis=axis)
-        n = int(np.prod([[self.shape[ax] for ax in axes]]))  #* elements per variance
-        
+        n = int(np.prod([[self.shape[ax] for ax in axes]]))  # * elements per variance
+
         result = Tensor(
             np.array(np.var(self.data, axis=axis, keepdims=keepdims, ddof=ddof)),
             requires_grad=self.requires_grad,
@@ -464,10 +472,10 @@ class Tensor:
 
         def _backward():
             if not self.requires_grad or result.grad is not None:
-                return 
-    
+                return
+
             grad = result.grad
-            if not keepdims: ###**** put the reduced dims back
+            if not keepdims:  ###**** put the reduced dims back
                 for ax in sorted(axes):
                     grad = np.expand_dims(grad, ax)
             centred = self.data - self.data.mean(axis=axis, keepdims=True)
@@ -485,21 +493,21 @@ class Tensor:
             dtype=np.float32,
             device=self.device,
         )
-        
+
         def _backward():
             if not self.requires_grad or result.grad is None:
                 return
-            
+
             grad, out = result.grad, result.data
             axes = self._normalize_axes(axis)
             if not keepdims:
                 for ax in sorted(axes):
                     grad = np.expand_dims(grad, axis=ax)
                     out = np.expand_dims(out, axis=ax)
-            mask = (self.data == out)
+            mask = self.data == out
             count = mask.sum(axis=axis, keepdims=True)
             self._add_grad(mask * grad / count)
-            
+
         result._backward = _backward
         return result
 
@@ -536,7 +544,7 @@ class Tensor:
 
         def _backward():
             if self.requires_grad and result.grad is not None:
-                    self._add_grad(result.grad.reshape(original_shape))
+                self._add_grad(result.grad.reshape(original_shape))
 
         result._backward = _backward
         return result
@@ -545,7 +553,7 @@ class Tensor:
         "A linear transformation that rearranges elements"
 
         axis = None
-                
+
         if dim0 is not None and dim1 is not None:
             # if dim0 < 0 or dim1 < 0:
             #     raise ValueError('Dimensions must be non-negative')
@@ -567,7 +575,7 @@ class Tensor:
                 axes[-2], axes[-1] = axes[-1], axes[-2]
                 axis = axes
                 transposed_data = np.transpose(self.data, axes)
-                
+
         result = Tensor(
             transposed_data,
             requires_grad=self.requires_grad,

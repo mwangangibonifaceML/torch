@@ -11,12 +11,12 @@ ASSUMPTIONS about minitorch.Tensor
 
 Change the import below to wherever your layers live.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from minitorch.tensor import Tensor
 from minitorch.nn import (  # <-- adjust to your module path
     BatchNormalization,
     Dropout,
@@ -28,6 +28,7 @@ from minitorch.nn import (  # <-- adjust to your module path
     Residual,
     Sequential,
 )
+from minitorch.tensor import Tensor
 
 EPS = 1e-5
 
@@ -73,7 +74,9 @@ def numerical_grad(f, arr: np.ndarray, eps: float = 1e-3) -> np.ndarray:
     return grad
 
 
-def check_gradients(module: Module, x_np: np.ndarray, *, check_input=True, check_params=True):
+def check_gradients(
+    module: Module, x_np: np.ndarray, *, check_input=True, check_params=True
+):
     """Compare autograd gradients with finite differences for the input
     and for every parameter of `module`."""
     out_shape = to_np(module(Tensor(x_np.copy()))).shape
@@ -87,20 +90,27 @@ def check_gradients(module: Module, x_np: np.ndarray, *, check_input=True, check
         analytic = to_np(x.grad).copy()
         x_pert = x_np.copy()
         numeric = numerical_grad(lambda: forward_scalar(module, x_pert, w), x_pert)
-        np.testing.assert_allclose(analytic, numeric, rtol=1e-2, atol=1e-3,
-                                   err_msg="input gradient mismatch")
+        np.testing.assert_allclose(
+            analytic, numeric, rtol=1e-2, atol=1e-3, err_msg="input gradient mismatch"
+        )
 
     if check_params:
         for i, p in enumerate(module.parameters()):
             assert p.grad is not None, f"parameter {i} received no gradient"
             analytic = to_np(p.grad).copy()
             numeric = numerical_grad(lambda: forward_scalar(module, x_np, w), p.data)
-            np.testing.assert_allclose(analytic, numeric, rtol=1e-2, atol=1e-3,
-                                       err_msg=f"parameter {i} gradient mismatch")
+            np.testing.assert_allclose(
+                analytic,
+                numeric,
+                rtol=1e-2,
+                atol=1e-3,
+                err_msg=f"parameter {i} gradient mismatch",
+            )
 
 
 class Scale(Module):
     """Tiny parameter-free-ish test module: y = x * a (a is a Parameter)."""
+
     def __init__(self, a=2.0, dim=3):
         super().__init__()
         self.a = Parameter(np.full(dim, a))
@@ -150,7 +160,7 @@ class TestModuleTraversal:
         outer = Sequential(seq, Linear(2, 2))
         mods = outer.modules()
         assert outer in mods
-        assert len(mods) == 3  
+        assert len(mods) == 3
 
     def test_modules_found_in_dict_and_tuple_attributes(self):
         class Holder(Module):
@@ -158,6 +168,7 @@ class TestModuleTraversal:
                 super().__init__()
                 self.d = {"a": Linear(2, 2), "b": [Linear(2, 2)]}
                 self.t = (Dropout(0.5),)
+
         mods = Holder().modules()
         assert sum(isinstance(m, Linear) for m in mods) == 2
         assert sum(isinstance(m, Dropout) for m in mods) == 1
@@ -226,6 +237,7 @@ class TestParameterCollection:
                 super().__init__()
                 self.ps = [Parameter(np.ones(1)), Parameter(np.ones(1))]
                 self.named = {"x": Parameter(np.ones(1))}
+
         assert len(Holder().parameters()) == 3
 
 
@@ -235,7 +247,9 @@ class TestParameterCollection:
 class TestTrainEval:
     def test_default_is_training(self):
         assert Linear(2, 2).training is True
-        assert Sequential(Linear(2, 2)).training is True  # Sequential must call super().__init__
+        assert (
+            Sequential(Linear(2, 2)).training is True
+        )  # Sequential must call super().__init__
 
     def test_eval_propagates_to_nested_children(self):
         drop = Dropout(0.5)
@@ -263,7 +277,9 @@ class TestTrainEval:
         rm_before = bn.running_mean.copy()
         net.eval()
         net(x)
-        np.testing.assert_array_almost_equal(bn.running_mean.data, rm_before.data)  # no update in eval
+        np.testing.assert_array_almost_equal(
+            bn.running_mean.data, rm_before.data
+        )  # no update in eval
 
     def test_train_eval_return_self_for_chaining(self):
         m = Linear(2, 2)
@@ -298,12 +314,16 @@ class TestLinear:
         lin.bias.data[:] = np.array([0.5, -1.0, 2.0])
         x = np.random.randn(6, 4)
         out = lin(Tensor(x))
-        np.testing.assert_allclose(to_np(out), x @ to_np(lin.weights) + to_np(lin.bias), atol=1e-6)
+        np.testing.assert_allclose(
+            to_np(out), x @ to_np(lin.weights) + to_np(lin.bias), atol=1e-6
+        )
 
     def test_forward_without_bias(self):
         lin = Linear(4, 3, bias=False)
         x = np.random.randn(2, 4)
-        np.testing.assert_allclose(to_np(lin(Tensor(x))), x @ to_np(lin.weights), atol=1e-6)
+        np.testing.assert_allclose(
+            to_np(lin(Tensor(x))), x @ to_np(lin.weights), atol=1e-6
+        )
 
     @pytest.mark.parametrize("batch", [1, 2, 17])
     def test_output_shape(self, batch):
@@ -313,7 +333,6 @@ class TestLinear:
         lin = Linear(3, 2)
         x = Tensor(np.random.randn(2, 3))
         np.testing.assert_array_equal(to_np(lin(x)), to_np(lin.forward(x)))
-
 
     def test_invalid_sizes(self):
         with pytest.raises(ValueError):
@@ -392,7 +411,9 @@ class TestDropout:
         x = Tensor(np.ones((20, 20)), requires_grad=True)
         out = Dropout(p)(x)
         out.sum().backward()
-        np.testing.assert_allclose(to_np(x.grad), to_np(out), atol=1e-6)  # x=1 -> grad == mask/keep
+        np.testing.assert_allclose(
+            to_np(x.grad), to_np(out), atol=1e-6
+        )  # x=1 -> grad == mask/keep
 
     def test_gradient_zero_where_dropped(self):
         x = Tensor(np.ones((20, 20)), requires_grad=True)
@@ -424,19 +445,27 @@ class TestDropout:
 class TestSequential:
     def test_varargs_and_list_equivalent(self):
         a, b = Linear(2, 3), Linear(3, 1)
-        assert Sequential(a, b).layers == Sequential([a, b]).layers == Sequential((a, b)).layers
+        assert (
+            Sequential(a, b).layers
+            == Sequential([a, b]).layers
+            == Sequential((a, b)).layers
+        )
 
     def test_forward_chains_in_order(self):
         a, b = Linear(2, 3), Linear(3, 1)
         x = Tensor(np.random.randn(4, 2))
-        np.testing.assert_allclose(to_np(Sequential(a, b)(x)), to_np(b(a(x))), atol=1e-10)
+        np.testing.assert_allclose(
+            to_np(Sequential(a, b)(x)), to_np(b(a(x))), atol=1e-10
+        )
 
     def test_empty_sequential_is_identity(self):
         x = Tensor(np.random.randn(2, 2))
         np.testing.assert_array_equal(to_np(Sequential()(x)), to_np(x))
 
     def test_output_shape(self):
-        assert Sequential(Linear(4, 8), Linear(8, 2))(Tensor(np.ones((5, 4)))).shape == (5, 2)
+        assert Sequential(Linear(4, 8), Linear(8, 2))(
+            Tensor(np.ones((5, 4)))
+        ).shape == (5, 2)
 
     def test_gradients_through_chain(self):
         check_gradients(Sequential(Linear(3, 4), Linear(4, 2)), np.random.randn(3, 3))
@@ -453,7 +482,9 @@ class TestResidual:
     def test_forward_is_x_plus_fn_x(self):
         fn = Linear(3, 3)
         x = Tensor(np.random.randn(4, 3))
-        np.testing.assert_allclose(to_np(Residual(fn)(x)), to_np(x) + to_np(fn(x)), atol=1e-10)
+        np.testing.assert_allclose(
+            to_np(Residual(fn)(x)), to_np(x) + to_np(fn(x)), atol=1e-10
+        )
 
     def test_skip_connection_passes_gradient_when_fn_is_zero(self):
         fn = Linear(3, 3, bias=False)
@@ -467,7 +498,9 @@ class TestResidual:
         check_gradients(Residual(Linear(3, 3)), np.random.randn(4, 3))
 
     def test_gradients_with_nested_sequential(self):
-        check_gradients(Residual(Sequential(Linear(3, 5), Linear(5, 3))), np.random.randn(2, 3))
+        check_gradients(
+            Residual(Sequential(Linear(3, 5), Linear(5, 3))), np.random.randn(2, 3)
+        )
 
     def test_shape_mismatch_raises(self):
         with pytest.raises(Exception):
@@ -523,7 +556,9 @@ class TestLayerNorm:
     def test_invariant_to_shift_and_scale_of_input(self):
         ln = LayerNormalization(6)
         x = np.random.randn(3, 6)
-        np.testing.assert_allclose(to_np(ln(Tensor(x))), to_np(ln(Tensor(x * 10 + 5))), atol=1e-3)
+        np.testing.assert_allclose(
+            to_np(ln(Tensor(x))), to_np(ln(Tensor(x * 10 + 5))), atol=1e-3
+        )
 
     @pytest.mark.parametrize("shape", [(4, 6), (2, 3, 6)])
     def test_gradients_match_numerical(self, shape):
@@ -537,7 +572,9 @@ class TestLayerNorm:
         x_np = np.random.randn(4, 5)
         up = np.random.randn(4, 5)
         weighted_loss(ln(Tensor(x_np, requires_grad=True)), up).backward()
-        x_hat = (x_np - x_np.mean(-1, keepdims=True)) / np.sqrt(x_np.var(-1, keepdims=True) + EPS)
+        x_hat = (x_np - x_np.mean(-1, keepdims=True)) / np.sqrt(
+            x_np.var(-1, keepdims=True) + EPS
+        )
         np.testing.assert_allclose(to_np(ln.beta.grad), up.sum(0), atol=1e-6)
         np.testing.assert_allclose(to_np(ln.gamma.grad), (up * x_hat).sum(0), atol=1e-5)
 
@@ -603,7 +640,9 @@ class TestBatchNorm:
         bn(Tensor(x))
         n = x.shape[0]
         np.testing.assert_allclose((bn.running_mean).data, 0.1 * x.mean(0), atol=1e-1)
-        np.testing.assert_allclose((bn.running_var).data, 0.9 * 1.0 + 0.1 * x.var(0) * n / (n - 1), atol=1e-1)
+        np.testing.assert_allclose(
+            (bn.running_var).data, 0.9 * 1.0 + 0.1 * x.var(0) * n / (n - 1), atol=1e-1
+        )
 
     def test_running_stats_keep_shape(self):
         bn = BatchNormalization(3)
@@ -680,8 +719,9 @@ class TestBatchNorm:
 
     def test_running_stats_get_no_gradient(self):
         bn = BatchNormalization(3)
-        weighted_loss(bn(Tensor(np.random.randn(6, 3), requires_grad=True)),
-                      np.random.randn(6, 3)).backward()
+        weighted_loss(
+            bn(Tensor(np.random.randn(6, 3), requires_grad=True)), np.random.randn(6, 3)
+        ).backward()
         assert not isinstance(bn.running_mean, Parameter)
         assert getattr(bn.running_mean, "grad", None) is None
 
@@ -690,11 +730,14 @@ class TestBatchNorm:
 # 10. Flatten
 # =========================================================================== #
 class TestFlatten:
-    @pytest.mark.parametrize("shape,expected", [
-        ((4, 3), (4, 3)),
-        ((4, 2, 3), (4, 6)),
-        ((2, 3, 4, 5), (2, 60)),
-    ])
+    @pytest.mark.parametrize(
+        "shape,expected",
+        [
+            ((4, 3), (4, 3)),
+            ((4, 2, 3), (4, 6)),
+            ((2, 3, 4, 5), (2, 60)),
+        ],
+    )
     def test_shapes(self, shape, expected):
         assert Flatten()(Tensor(np.zeros(shape))).shape == expected
 
@@ -727,6 +770,7 @@ class TestModuleBase:
         class Echo(Module):
             def forward(self, inputs):
                 return inputs
+
         x = Tensor(np.ones(3))
         assert Echo()(x) is x
 
@@ -734,15 +778,20 @@ class TestModuleBase:
         class Add(Module):
             def forward(self, inputs, k=0):
                 return inputs + k
-        np.testing.assert_array_equal(to_np(Add()(Tensor(np.zeros(2)), k=3)), [3.0, 3.0])
+
+        np.testing.assert_array_equal(
+            to_np(Add()(Tensor(np.zeros(2)), k=3)), [3.0, 3.0]
+        )
 
     def test_default_repr(self):
         assert repr(Module()) == "Module()"
 
     def test_zero_grad_resets_all_parameters(self):
         net = Sequential(Linear(3, 3), LayerNormalization(3))
-        weighted_loss(net(Tensor(np.random.randn(2, 3), requires_grad=True)),
-                      np.random.randn(2, 3)).backward()
+        weighted_loss(
+            net(Tensor(np.random.randn(2, 3), requires_grad=True)),
+            np.random.randn(2, 3),
+        ).backward()
         assert any(np.any(to_np(p.grad) != 0) for p in net.parameters())
         net.zero_grad()
         for p in net.parameters():
@@ -807,7 +856,9 @@ class TestGradientFlow:
 
     def test_deep_network_matches_numerical_gradients_in_eval(self):
         net = Sequential(
-            Linear(4, 6), LayerNormalization(6), Dropout(0.5),
+            Linear(4, 6),
+            LayerNormalization(6),
+            Dropout(0.5),
             Residual(Sequential(Linear(6, 6), LayerNormalization(6))),
             Linear(6, 3),
         )
@@ -853,6 +904,8 @@ class TestTrainingSmoke:
     def test_parameters_actually_change_after_update(self):
         lin = Linear(3, 2)
         before = to_np(lin.weights).copy()
-        weighted_loss(lin(Tensor(np.random.randn(4, 3))), np.random.randn(4, 2)).backward()
+        weighted_loss(
+            lin(Tensor(np.random.randn(4, 3))), np.random.randn(4, 2)
+        ).backward()
         lin.weights.data -= 0.1 * to_np(lin.weights.grad)
         assert not np.allclose(before, to_np(lin.weights))
