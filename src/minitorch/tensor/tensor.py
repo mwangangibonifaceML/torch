@@ -133,7 +133,6 @@ class Tensor:
 
         # forward pass
         result_data = self.data[key]
-
         if not isinstance(result_data, np.ndarray):
             result_data = np.array(result_data)
 
@@ -146,14 +145,11 @@ class Tensor:
         )
 
         def _backward():
-            if not self.requires_grad:
+            if not self.requires_grad or result.grad is None:
                 return
-
             grad_input = np.zeros_like(self.data)
-
             # Scatter gradient back to the indexed positions
-            grad_input[key] += result.grad
-
+            np.add.at(grad_input, key, result.grad)
             self._add_grad(grad_input)
 
         result._backward = _backward
@@ -418,22 +414,12 @@ class Tensor:
         def _backward():
             if result.grad is None or not self.requires_grad:
                 return
-
             grad = result.grad
-
-            # If dimensions were removed, restore them
-            if axis is not None and not keepdims:
-                if isinstance(axis, int):
-                    axes = (axis,)
-                else:
-                    axes = axis
-
-                for ax in sorted(axes):
+            #* If dimensions were removed, restore them
+            if not keepdims:
+                for ax in sorted(self._normalize_axes(axis)):
                     grad = np.expand_dims(grad, ax)
-
-            # Broadcast to input shape
             grad = np.broadcast_to(grad, self.shape)
-
             self._add_grad(grad)
 
         result._backward = _backward
@@ -464,9 +450,12 @@ class Tensor:
         result._backward = _backward
         return result
 
-    def var(self, axis: int | None = None, keepdims: bool = False) -> Tensor:
+    def var(self, axis: int | None = None, keepdims: bool = False, ddof: int =1) -> Tensor:
+        axes = self._normalize_axes(axis=axis)
+        n = int(np.prod([[self.shape[ax] for ax in axes]]))  #* elements per variance
+        
         result = Tensor(
-            np.array(np.var(self.data, axis=axis, keepdims=keepdims, ddof=1)),
+            np.array(np.var(self.data, axis=axis, keepdims=keepdims, ddof=ddof)),
             requires_grad=self.requires_grad,
             _parents=(self,),
             dtype=np.float32,
@@ -474,21 +463,45 @@ class Tensor:
         )
 
         def _backward():
-            if self.requires_grad and result.grad is not None:
-                    self._add_grad(result.grad / self.data.size)
+            if not self.requires_grad or result.grad is not None:
+                return 
+    
+            grad = result.grad
+            if not keepdims: ###**** put the reduced dims back
+                for ax in sorted(axes):
+                    grad = np.expand_dims(grad, ax)
+            centred = self.data - self.data.mean(axis=axis, keepdims=True)
+            self._add_grad(grad * 2 * centred / (n - ddof))
 
         result._backward = _backward
         return result
 
     def max(self, axis: int | None = None, keepdims=False) -> Tensor:
         """Find the max value of a tensor along specified axis"""
-        return Tensor(
+        result = Tensor(
             np.array(np.max(self.data, axis=axis, keepdims=keepdims)),
             requires_grad=self.requires_grad,
             _parents=(self,),
             dtype=np.float32,
             device=self.device,
         )
+        
+        def _backward():
+            if not self.requires_grad or result.grad is None:
+                return
+            
+            grad, out = result.grad, result.data
+            axes = self._normalize_axes(axis)
+            if not keepdims:
+                for ax in sorted(axes):
+                    grad = np.expand_dims(grad, axis=ax)
+                    out = np.expand_dims(out, axis=ax)
+            mask = (self.data == out)
+            count = mask.sum(axis=axis, keepdims=True)
+            self._add_grad(mask * grad / count)
+            
+        result._backward = _backward
+        return result
 
     def reshape(self, *shape):
         """Reshape the tensor to a new dimensions"""
@@ -720,7 +733,7 @@ class Tensor:
                 f"Input Tensor must 3-D, you provided a {input.data.ndim}-D Tensor"
             )
         output_data = input.data.copy()
-        mask = np.zeros_like(output_data)
+        mask = np.zeros(output_data.shape, dtype=bool)
         seq_len = output_data.shape[-1]
         rows, cols = np.triu_indices(seq_len, k=1)
         output_data[..., rows, cols] = filler
@@ -735,13 +748,11 @@ class Tensor:
         )
 
         def _backward():
-            if result.grad == None:
+            if result.grad is None or not input.requires_grad:
                 return
-            grad = result.grad.copy()
-            grad[mask] = 0
+            input._add_grad(np.where(mask, 0.0, result.grad))
 
-            input._add_grad(grad)
-
+        result._backward = _backward
         return result
 
     @classmethod
