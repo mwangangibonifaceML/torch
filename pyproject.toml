@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 
 [project]
-name = "torch"
+name = "minitorch"
 version = "0.1.0"
 description = "Principles and Components of building Artificial Intelligent Systems."
 readme = "README.md"
@@ -13,6 +13,7 @@ dependencies = [
     "numpy>=2.5.4",
     "pytest>=9.1.1",
     "ruff>=0.17.1",
+    "torch>=2.14.1",
 ]
 
 [tools.setuptools]
