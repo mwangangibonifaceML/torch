@@ -3,8 +3,6 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-print()
-
 
 def unbroadcast(grad: NDArray, shape: tuple[int]) -> NDArray:
     """Sum `grad` down to `shape`, undoing numpy broadcasting."""
@@ -66,7 +64,7 @@ class Tensor:
         if isinstance(data, (float, int, list, tuple)):
             data = np.array(data, dtype=dtype)
         elif hasattr(data, "shape") and hasattr(data, "dtype"):
-            data = data.astype(dtype)
+            data = np.array(data.data).astype(dtype)
 
         self.data = data
         self.requires_grad = requires_grad
@@ -334,8 +332,8 @@ class Tensor:
         if (
             self.data.ndim == 0 or other.data.ndim == 0
         ):  # * 1D or scalar case, fallback to element-wise multiplication
-            result = Tensor(
-                self.data * other.data,
+            result_data = Tensor(
+                np.array(self.data * other.data),
                 requires_grad=self._determine_gradient_requirement(other),
                 _parents=(self, other),
                 dtype=np.float32,
@@ -352,15 +350,15 @@ class Tensor:
                     f"Incompatible shapes for matmul: {self.shape} @ {other.shape}"
                 )
 
-            result_data = np.matmul(self.data, other.data)
+            result_data = np.array(np.matmul(self.data, other.data))
 
-            result = Tensor(
-                result_data,
-                requires_grad=self._determine_gradient_requirement(other),
-                _parents=(self, other),
-                dtype=np.float32,
-                device=self.device,
-            )
+        result = Tensor(
+            result_data,
+            requires_grad=self._determine_gradient_requirement(other),
+            _parents=(self, other),
+            dtype=np.float32,
+            device=self.device,
+        )
 
         def _backward():
             if result.grad is None:

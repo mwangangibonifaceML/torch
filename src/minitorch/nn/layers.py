@@ -91,7 +91,7 @@ class Module:
         """
         raise NotImplementedError("Forward method not implemented.")
 
-    def __call__(self, inputs: Tensor, *args: Any, **kwds: Any) -> Tensor:
+    def __call__(self, *args: Any, **kwds: Any) -> Tensor:
         """Allows the layer to be called like a function.
 
         Args:
@@ -102,7 +102,7 @@ class Module:
         Returns:
             Tensor: The output tensor from the forward pass.
         """
-        return self.forward(inputs, *args, **kwds)
+        return self.forward(*args, **kwds)
 
     def _children(self) -> Iterator[Module]:
         for value in self.__dict__.values():
@@ -206,6 +206,10 @@ class Linear(Module):
             Tensor: The output tensor of shape (batch_size, out_features).
         """
         if self.bias is not None:
+            #* (inputs shape -->> batch, in_feat)
+            #* (weights shape -->> in_feat, out_feat)
+            #* inputs @ weights: shape -->> batch, out_feat
+            
             return inputs @ self.weights + self.bias
         return inputs @ self.weights
 

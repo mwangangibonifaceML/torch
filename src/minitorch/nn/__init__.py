@@ -1,17 +1,17 @@
 "Layers: The Building Blocks of Neural Networks"
 
 from .layers import (
-    BatchNormalization, 
-    Dropout, 
+    BatchNormalization,
+    Dropout,
     Flatten,
-    LayerNormalization, 
+    LayerNormalization,
     Linear,
-    Module, 
+    Module,
     Parameter,
     Residual,
-    Sequential
-    )
-    
+    Sequential,
+)
+
 __all__ = [
     "BatchNormalization",
     "Dropout",
