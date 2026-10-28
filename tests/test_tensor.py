@@ -73,7 +73,7 @@ class TestTensorCreation:
     def test_tensor_creation_from_numpy_arrays(self):
         "Test tensor creation from numpy arrays."
 
-        t1 = Tensor(np.array((1, 2, 3, 4)))
+        t1 = Tensor(np.array((1, 2, 3, 4)), dtype=np.float32)
         assert t1.shape == (4,), (
             f"1D input tensor is wrong "
             f"Input has elements (1,2,3,4) "
