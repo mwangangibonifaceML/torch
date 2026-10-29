@@ -102,7 +102,7 @@ class SGD(Optimizer):
         if len(states) != len(self.momentum_buffers):
             raise ValueError(
                 f"Momentum state length mismatch\n"
-                f"State has {len(state)} buffers, but optimizer has {len(self.momentum_buffers)} parameters\n"
+                f"State has {len(states)} buffers, but optimizer has {len(self.momentum_buffers)} parameters\n"
                 f"Checkpoint was saved with a different model architecture or parameter count\n"
                 f" Ensure you're loading state into an optimizer with the same number of parameters:\n"
                 f"# Check parameter counts match before restoring\n"
