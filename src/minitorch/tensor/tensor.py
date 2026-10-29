@@ -332,7 +332,7 @@ class Tensor:
         if (
             self.data.ndim == 0 or other.data.ndim == 0
         ):  # * 1D or scalar case, fallback to element-wise multiplication
-            result_data = Tensor(
+            result = Tensor(
                 np.array(self.data * other.data),
                 requires_grad=self._determine_gradient_requirement(other),
                 _parents=(self, other),
@@ -350,15 +350,15 @@ class Tensor:
                     f"Incompatible shapes for matmul: {self.shape} @ {other.shape}"
                 )
 
-            result_data = np.array(np.matmul(self.data, other.data))
+            result_data = np.matmul(self.data, other.data)
 
-        result = Tensor(
-            result_data,
-            requires_grad=self._determine_gradient_requirement(other),
-            _parents=(self, other),
-            dtype=np.float32,
-            device=self.device,
-        )
+            result = Tensor(
+                result_data,
+                requires_grad=self._determine_gradient_requirement(other),
+                _parents=(self, other),
+                dtype=np.float32,
+                device=self.device,
+            )
 
         def _backward():
             if result.grad is None:
