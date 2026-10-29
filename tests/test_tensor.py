@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-
+import unittest
 from minitorch.tensor import Tensor
 
 
@@ -451,3 +451,7 @@ class TestTensorManipulation:
 
         assert isinstance(result6, Tensor)
         assert np.array_equal(expected.data, result6.data)
+        
+        
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
