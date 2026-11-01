@@ -57,6 +57,7 @@ class SGD(Optimizer):
         super().__init__(params, lr)
         self.momentum = momentum
         self.weight_decay = weight_decay
+        self.momentum_buffers = [None for _ in self.params]
         
     def step(self) -> None:
         """Perform Stochastic Gradient Descent to update the parameters"""
@@ -94,6 +95,14 @@ class SGD(Optimizer):
         if self.momentum > 0.0:
             return True
         return False
+    
+    def get_momentum_state(self) -> list | None:
+        "Get momentum for checkpointing."
+        if not self.has_momentum:
+            return 
+        states = [buffer.copy() if buffer is not None else None
+                    for buffer in self.momentum_buffers]
+        return states
         
     def set_momentum_state(self, states: list | None) -> None:
         if states is None or not self.has_momentum():
