@@ -14,7 +14,7 @@ from minitorch.nn import Parameter, Module, Linear
 from minitorch.dataloader import DataLoader, TensorDataset
 from minitorch.losses import SoftMaxCrossEntropy, BCEWithLogits, MSE, Loss
 
-def clip_grad_clip_norm(paramters: lits[Parameter], max_norm: float= 1.0) -> float:
+def clip_grad_clip_norm(paramters: list[Parameter], max_norm: float= 1.0) -> float:
     """
     clip gradients by global norm to prevent exploding gradients.
     
