@@ -6,7 +6,7 @@ import os
 import pickle
 import numpy as np
 from pathlib import Path
-from sympy import N
+
 
 from minitorch.optim import Adam, Optimizer, SGD, AdamW
 from minitorch.tensor import Tensor
@@ -14,7 +14,7 @@ from minitorch.nn import Parameter, Module, Linear
 from minitorch.dataloader import DataLoader, TensorDataset
 from minitorch.losses import SoftMaxCrossEntropy, BCEWithLogits, MSE, Loss
 
-def clip_grad_clip_norm(paramters: list[Parameter], max_norm: float= 1.0) -> float:
+def clip_grad_norm(paramters: list[Parameter], max_norm: float= 1.0) -> float:
     """
     clip gradients by global norm to prevent exploding gradients.
     
@@ -241,7 +241,7 @@ class Trainer(object):
             if param.grad is not None:
                 param.grad /= sample_count
         if self.grad_clip_norm is not None:
-            clip_grad_clip_norm(params, self.grad_clip_norm)
+            clip_grad_norm(params, self.grad_clip_norm)
             
         self.optimizer.step()
         self.optimizer.zero_grad()
