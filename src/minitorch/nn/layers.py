@@ -102,7 +102,7 @@ class Module:
         Returns:
             Tensor: The output tensor from the forward pass.
         """
-        return self.forward(inputs)
+        return self.forward(inputs, *args, **kwds)
 
     def _children(self) -> Iterator[Module]:
         for value in self.__dict__.values():
