@@ -599,6 +599,21 @@ class Tensor:
 
         result._backward = _backward
         return result
+    
+    def abs(self) -> Tensor:
+        out = Tensor(np.abs(self.data),
+                    requires_grad=self.requires_grad,
+                    _parents=(self,),
+                    dtype=np.float32,
+                    device=self.device)
+
+        def _backward():
+            if self.requires_grad and out.grad is not None:
+                self._add_grad(out.grad * np.sign(self.data))
+                
+
+        out._backward = _backward
+        return out
 
     def detach(self):
         """Return a new Tensor detached from the current computation graph."""
