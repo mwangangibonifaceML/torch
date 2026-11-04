@@ -225,7 +225,7 @@ if __name__ == "__main__":
     n,s = len(inputs.data), inputs.data.std()
     sxx = (inputs.data - inputs.data.mean() ** 2).sum()
     alpha = 0.5
-    print(n,s,sxx)
+    
     regression = LinearRegression()
     ridge = RidgeRegression(degree=1, alpha=0.022)
     lasso = LassoRegression(degree=1, alpha=alpha)
