@@ -147,10 +147,10 @@ class Tensor:
         def _backward():
             if not self.requires_grad or result.grad is None:
                 return
-            grad_input = np.zeros_like(self.data)
+            grad_output = np.zeros_like(self.data)
             # Scatter gradient back to the indexed positions
-            np.add.at(grad_input, key, result.grad)
-            self._add_grad(grad_input)
+            np.add.at(grad_output, key, result.grad)
+            self._add_grad(grad_output)
 
         result._backward = _backward
         return result
@@ -588,17 +588,13 @@ class Tensor:
             **Key insight:** The gradient of transpose is just transpose the
             gradient.
             """
-            if not self.requires_grad:
-                return
-
-            # transpose gradient back
-            if result.grad is None:
-                return
-            grad_input = np.transpose(a=result.grad, axes=axis)
-            self._add_grad(grad_input)
+            if self.requires_grad and result.grad is not None:
+                grad_input = np.transpose(a=result.grad, axes=axis)
+                self._add_grad(grad_input)
 
         result._backward = _backward
         return result
+    
     def abs(self) -> Tensor:
         out = Tensor(np.abs(self.data),
                     requires_grad=self.requires_grad,
@@ -612,6 +608,7 @@ class Tensor:
         
         out._backward = _backward
         return out
+    
     def detach(self):
         """Return a new Tensor detached from the current computation graph."""
         return Tensor(self.data.copy(), requires_grad=False)
@@ -737,38 +734,22 @@ class Tensor:
         data = np.tril(input.data, k=diagonal).astype(dtype)
         return cls(data=data, requires_grad=requires_grad, dtype=dtype, device=device)
 
-    @classmethod
-    def masked_fill(
-        cls,
-        input: Tensor,
-        filler=-np.inf,
-        requires_grad=False,
-        dtype=np.float32,
-        device=None,
-    ):
-        if input.data.ndim <= 2:
-            raise ValueError(
-                f"Input Tensor must 3-D, you provided a {input.data.ndim}-D Tensor"
-            )
-        output_data = input.data.copy()
-        mask = np.zeros(output_data.shape, dtype=bool)
-        seq_len = output_data.shape[-1]
-        rows, cols = np.triu_indices(seq_len, k=1)
-        output_data[..., rows, cols] = filler
-        mask[..., rows, cols] = True
-
-        result = cls(
-            output_data,
-            requires_grad=input.requires_grad,
-            _parents=(input,),
+    def masked_fill(self, mask, filler) -> Tensor:
+        """Fill elements of the tensor with a specified value where a mask is True."""
+        m = np.asarray(mask.data if isinstance(mask, Tensor) else mask, dtype=bool)
+        out = np.where(m, np.float32(filler), self.data).astype(np.float32)
+        result = Tensor(
+            out,
+            requires_grad=self.requires_grad,
+            _parents=(self,),
             dtype=np.float32,
-            device=input.device,
+            device=self.device,
         )
 
         def _backward():
-            if result.grad is None or not input.requires_grad:
+            if result.grad is None or not self.requires_grad:
                 return
-            input._add_grad(np.where(mask, 0.0, result.grad))
+            self._add_grad(np.where(m, 0.0, result.grad))
 
         result._backward = _backward
         return result

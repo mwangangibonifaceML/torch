@@ -170,7 +170,7 @@ class SoftMaxCrossEntropy(Loss):
                     stable_probs = stable_softmax(logits_reshape.data)
                     one_hot_encode = np.zeros((batch_size, num_classes), dtype=np.float32)
                     one_hot_encode[np.arange(batch_size), target_indices] = 1.0
-                    grad_logits = (stable_probs - one_hot_encode) / batch_size
+                    grad_logits = (stable_probs - one_hot_encode)
                     logits_grad = (grad_logits * loss_grad).reshape(logits.shape)
                     logits._add_grad(logits_grad)
                 

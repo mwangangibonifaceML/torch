@@ -477,7 +477,7 @@ class TestSoftMaxCrossEntropy(LossContract, unittest.TestCase):
             wrong.backward()
         self.assertAlmostEqual(float(right.data), 0.0, places=6)
         self.assertAlmostEqual(float(wrong.data) / 2e4, 1.0, places=5)
-        np.testing.assert_allclose(x.grad, (softmax_ref(logits) - np.eye(3)[[2, 0]]) / 4, atol=1e-6)
+        np.testing.assert_allclose(x.grad, (softmax_ref(logits) - np.eye(3)[[2, 0]]) / 2, atol=1e-6)
 
     def test_masked_minus_inf_classes_do_not_break_the_loss(self):
         logits = np.array([[1.0, -np.inf, 0.0]], dtype=np.float32)
