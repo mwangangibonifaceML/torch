@@ -734,7 +734,7 @@ class Tensor:
         data = np.tril(input.data, k=diagonal).astype(dtype)
         return cls(data=data, requires_grad=requires_grad, dtype=dtype, device=device)
 
-    def masked_fill(self, mask, filler: "-inf") -> Tensor:
+    def masked_fill(self, mask, filler) -> Tensor:
         """Fill elements of the tensor with a specified value where a mask is True."""
         m = np.asarray(mask.data if isinstance(mask, Tensor) else mask, dtype=bool)
         out = np.where(m, np.float32(filler), self.data).astype(np.float32)
