@@ -122,7 +122,7 @@ class Trainer(object):
         
     def train_epoch(self, dataloader: DataLoader, accumulation_steps: int=2) -> float:
         if not isinstance(accumulation_steps, (int, np.integer)) or accumulation_steps < 1:
-            raise ValueError("accumulation steps must be nonnegative integer")
+            raise ValueError("accumulation steps must be a positive integer")
         
         self.model.train(mode=True)
         self.training_mode = True
@@ -136,11 +136,10 @@ class Trainer(object):
         #* track stats for the epoch
         total_loss = 0.0
         total_samples = 0
-        accumulated_loss = 0.0
         batches_in_accumulation = 0
         samples_in_accumulation = 0
         
-        for i, (features, targets) in enumerate(dataloader):
+        for features, targets in dataloader:
             batch_loss = self._process_batch(features, targets)            
             batch_size = features.shape[0]
             total_samples += batch_size
@@ -151,8 +150,7 @@ class Trainer(object):
             
             #* update parameters every accumulation steps
             if batches_in_accumulation == accumulation_steps:
-                self._optimizer_update(samples_in_accumulation)
-                accumulated_loss += total_loss
+                self._optimizer_update(batches_in_accumulation)
                 self.step += 1
                 
                 batches_in_accumulation = 0
@@ -161,7 +159,7 @@ class Trainer(object):
         #* for batch count not divisible by accumulation steps
         #* makes sure that there is no gradient lost
         if batches_in_accumulation > 0:
-            self._optimizer_update(samples_in_accumulation)
+            self._optimizer_update(batches_in_accumulation)
             self.step += 1
             
         average_loss = total_loss / max(total_samples, 1)
@@ -327,6 +325,7 @@ class Trainer(object):
         self.grad_clip_norm = checkpoint["grad_clip_norm"]
         self.model.training = self.training_mode
         self.history = checkpoint["history"]
+        self.model.train(self.training_mode)
         
         #* restore state: model, optimizer and scheduler.
         self._set_model_state(checkpoint.get("model_state", None))

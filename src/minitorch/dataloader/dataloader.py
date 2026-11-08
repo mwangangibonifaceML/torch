@@ -83,7 +83,7 @@ class DataLoader(Dataset):
         for index in range(0, len(indices), self.batch_size):
             batch_indices = indices[index:index + self.batch_size]
             batch = [self.dataset[idx] for idx in batch_indices]
-            
+    
             #* convert a list of tuple to a tuple of Tensors
             batched_tensor = []
             num_tensors = len(batch[0])

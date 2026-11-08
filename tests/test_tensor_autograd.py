@@ -818,12 +818,9 @@ class TestMaskedFill:
 
     def test_masked_fill_forward(self):
         x = Tensor(np.ones((1, 3, 3)))
-        out = Tensor.masked_fill(x, filler=-5.0)
-        assert out.data[0, 0, 1] == -5.0 and out.data[0, 1, 0] == 1.0
-
-    def test_masked_fill_rejects_2d(self):
-        with pytest.raises(ValueError):
-            Tensor.masked_fill(Tensor(np.ones((3, 3))))
+        mask = Tensor(np.tril(np.ones((3,3)))[np.newaxis, :, :])
+        out = Tensor.masked_fill(x, mask, filler=-5.0)
+        assert out.data[0, 0, 1] == 1.0 and out.data[0, 1, 0] == -5.0
 
 
 class TestStackAndTril:

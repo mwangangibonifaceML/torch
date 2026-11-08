@@ -12,6 +12,8 @@ EPSILON = 1e-5
 DROPOUT_MIN_PROB = 0.0
 DROPOUT_MAX_PROB = 1.0
 
+rng = np.random.default_rng(42)
+
 
 def _walk(value, kind) -> list[Module]:
     """
@@ -120,7 +122,7 @@ class Module:
                 continue
             seen.add(id(module))
             out.append(module)
-            stack.extend(reversed(list(self._children())))
+            stack.extend(reversed(list(module._children())))
         return out
 
     def parameters(self) -> list[Parameter]:
@@ -262,7 +264,7 @@ class Dropout(Module):
 
         # * during training, apply dropout
         keep_prob = DROPOUT_MAX_PROB - self.p
-        mask = (np.random.random(inputs.data.shape) < keep_prob).astype(
+        mask = (rng.random(inputs.data.shape) < keep_prob).astype(
             inputs.data.dtype
         )
 
@@ -292,11 +294,11 @@ class Sequential(Module):
         else:
             self.layers = list(layers)
 
-    def forward(self, inputs: Tensor) -> Tensor:
+    def forward(self, inputs: Tensor, *args, **kwds) -> Tensor:
         """Forward pass through all layers in sequence."""
         current = inputs
         for layer in self.layers:
-            current = layer(current)
+            current = layer(current, *args, **kwds)
         return current
 
     def __repr__(self) -> str:
@@ -324,22 +326,22 @@ class LayerNormalization(Module):
     differentiable Tensor operations.
     """
 
-    def __init__(self, dim: int, eps: float = EPSILON) -> None:
+    def __init__(self, normalized_shape: int, eps: float = EPSILON) -> None:
         super().__init__()
-        if not isinstance(dim, (int, np.integer)) or dim <= 0:
-            raise ValueError(f"dim must be a positive integer, got {dim}")
+        if not isinstance(normalized_shape, (int, np.integer)) or normalized_shape <= 0:
+            raise ValueError(f"normalized_shape must be a positive integer, got {normalized_shape}")
 
-        self.dim = int(dim)
+        self.normalized_shape = int(normalized_shape)
         self.eps = eps
 
         # * Learnable parameters: scale and shift
-        self.gamma = Parameter(np.ones(shape=self.dim))
-        self.beta = Parameter(np.zeros(shape=self.dim))
+        self.gamma = Parameter(np.ones(shape=self.normalized_shape))
+        self.beta = Parameter(np.zeros(shape=self.normalized_shape))
 
     def forward(self, X: Tensor) -> Tensor:
-        if X.shape[-1] != self.dim:
+        if X.shape[-1] != self.normalized_shape:
             raise ValueError(
-                f"last dim of input should equal dim, received: {X.shape[-1]} expected: {self.dim}"
+                f"last dim of input should equal normalized_shape, received: {X.shape[-1]} expected: {self.normalized_shape}"
             )
 
         mean = X.mean(axis=-1, keepdims=True)
@@ -356,7 +358,7 @@ class LayerNormalization(Module):
         return shifted_norm
 
     def __repr__(self) -> str:
-        return f"LayerNormalization(dim={self.dim})"
+        return f"LayerNormalization(normalized_shape={self.normalized_shape}, eps={self.eps})"
 
 
 class BatchNormalization(Module):
@@ -366,24 +368,24 @@ class BatchNormalization(Module):
     Supports 2D inputs of shape (batch_size, dim)
     """
 
-    def __init__(self, dim: int, eps: float = EPSILON, momentum: float = 0.1) -> None:
+    def __init__(self, normalized_shape: int, eps: float = EPSILON, momentum: float = 0.1) -> None:
 
         super().__init__()
-        if not isinstance(dim, int) or dim <= 0:
-            raise ValueError(f"dim must be a positive integer, got {dim}")
+        if not isinstance(normalized_shape, (int, np.integer)) or normalized_shape <= 0:
+            raise ValueError(f"normalized_shape must be a positive integer, got {normalized_shape}")
 
         # * store the dims, epsilon and the momentum
-        self.dim = dim
+        self.normalized_shape = int(normalized_shape)
         self.eps = eps
         self.momentum = momentum
 
         # * learnable parameters
-        self.gamma = Parameter(np.ones(shape=self.dim))
-        self.beta = Parameter(np.zeros(shape=self.dim))
+        self.gamma = Parameter(np.ones(shape=self.normalized_shape))
+        self.beta = Parameter(np.zeros(shape=self.normalized_shape))
 
         # * running mean and var (statistics not learnable)
-        self.running_mean = Tensor.zeros(shape=(self.dim,))
-        self.running_var = Tensor.ones(shape=(self.dim,))
+        self.running_mean = Tensor.zeros(shape=(self.normalized_shape,))
+        self.running_var = Tensor.ones(shape=(self.normalized_shape,))
 
     def forward(self, X: Tensor) -> Tensor:
         if len(X.shape) != 2:  # , \
@@ -391,8 +393,8 @@ class BatchNormalization(Module):
                 f"Batch Normalization only supports 2D inputs (N,C), got shape {X.shape}"
             )
 
-        if X.shape[1] != self.dim:
-            raise ValueError(f"Expected: {self.dim} features, got: {X.shape[1]}")
+        if X.shape[1] != self.normalized_shape:
+            raise ValueError(f"Expected: {self.normalized_shape} features, got: {X.shape[1]}")
 
         if self.training:
             batch_mean = X.mean(axis=0, keepdims=True)
