@@ -12,7 +12,7 @@ DEFAULT_BETA2 = 0.999
 DEFAULT_SGD_LR = 0.01
 DEFAULT_ADAM_LR = 0.001
 
-class Optimizer(object):
+class Optimizer:
     "Base class for all optimizers."
     
     def __init__(self, params: list[Parameter], lr: float) -> None:
@@ -152,7 +152,7 @@ class Adam(Optimizer):
         for i, param in enumerate(self.params):
             if param is None or param.grad is None:
                 continue
-            grad_data = self._extract_grad_data(param)
+            grad_data = self._extract_grad_data(param.grad)
             
             if self.weight_decay > 0.0:
                 grad_data += self.weight_decay * param.data
@@ -215,7 +215,7 @@ class AdamW(Optimizer):
         for i, param in enumerate(self.params):
             if param is None or param.grad is None:
                 continue
-            grad_data = self._extract_grad_data(param)
+            grad_data = self._extract_grad_data(param.grad)
             m,v = self._update_moments(i, grad_data)
             
             param.data -= self.lr * m / (np.sqrt(v) + self.eps)

@@ -217,7 +217,7 @@ class Linear(Module):
 
     def __repr__(self) -> str:
         """String representation of the linear layer."""
-        bias_str = "True" if self.bias is not None else None
+        bias_str = "True" if self.bias is not None else "False"
         return (
             f"Linear(in_features={self.in_features}, out_features= {self.out_features}, "
             f"bias={bias_str})"

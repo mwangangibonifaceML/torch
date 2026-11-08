@@ -16,9 +16,9 @@ def _check_reduction(reduction: str) -> str:
 
 def _reduce(values: np.ndarray, reduction: str):
     if reduction == "mean":
-        values.mean(axis=0)
+        return values.mean(axis=0, keepdims=False)
     if reduction == "sum":
-        values.sum()
+        return values.sum(axis=0, keepdims=False)
     return values
 
 
@@ -47,7 +47,7 @@ def log_softmax(tensor: Tensor, dim: int | None = -1) -> Tensor:
     exp_x = np.exp(x_shifted)
     exp_x_sum = np.sum(exp_x, axis=dim, keepdims=True)
     
-    log_softmax_data = np.log(exp_x_sum + EPSILON)
+    log_softmax_data = np.log(exp_x_sum)
 
     #* return log-softmax = tensor - max_val - log_softmax_data
     return Tensor(x_shifted - log_softmax_data, requires_grad=True, _parents=(tensor,))
@@ -104,7 +104,6 @@ class MSE(Loss):
             def _backward():
                 if out.grad is None:
                     return 
-                predictions.data.shape[0]
                 mse_grad = 2 * (
                     predictions.data - targets.data
                     ) * _upstream(out, self.reduction, predictions.data.size)
@@ -143,7 +142,7 @@ class SoftMaxCrossEntropy(Loss):
         batch_size, num_classes = log_probs.shape[0], log_probs.shape[1]
         target_indices = targets.data.astype(int)
         
-        if n and target_indices.min() < 0 or target_indices.max() >= num_classes:
+        if n and (target_indices.min() < 0 or target_indices.max() >= num_classes):
             raise ValueError(
                 f"target indices must be in range (0 {num_classes - 1})."
             )
@@ -153,9 +152,16 @@ class SoftMaxCrossEntropy(Loss):
         selected_log_probs = log_probs.data[np.arange(batch_size), target_indices]
         
         #* calculate loss
-        neg_log_probs = -np.mean(selected_log_probs, keepdims=False) #* pytorch's NLLoss
+        # if self.reduction == "mean":
+        #     loss_value = -np.mean(selected_log_probs, keepdims=False) #* pytorch's NLLoss
+        # elif self.reductions == "sum":
+        #     loss_value = -np.sum(selected_log_probs, keepdims=False) #* pytorch's NLLoss
+        # else:
+        #     loss_value = -selected_log_probs
+            
+        loss_value = -_reduce(selected_log_probs, self.reduction)
         
-        loss = Tensor(neg_log_probs,
+        loss = Tensor(loss_value,
                     requires_grad=logits.requires_grad,
                     _parents=tuple(t for t in inputs if t.requires_grad),
                     device =inputs[0].device,
@@ -223,7 +229,7 @@ class BCEWithLogits(Loss):
                 if logits.requires_grad:
                     logits._add_grad(logits_grad * loss_grad)
                 if targets.requires_grad:
-                    targets._add_grad(logits.data * loss_grad)
+                    targets._add_grad((-np.log(1 - probs_clipped)/probs_clipped) * loss_grad)
                 
             loss._backward = _backward
         return loss
