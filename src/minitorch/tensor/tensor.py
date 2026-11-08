@@ -469,7 +469,7 @@ class Tensor:
         )
 
         def _backward():
-            if not self.requires_grad or result.grad is not None:
+            if not self.requires_grad or result.grad is None:
                 return
 
             grad = result.grad

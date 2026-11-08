@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from turtle import forward
 import numpy as np 
 
 from minitorch.tensor import Tensor
@@ -91,9 +90,9 @@ class MultiHeadAttention(Module):
         if embed_dim % num_heads != 0:
             raise ValueError(
                 f"Multi-head attention dimension mismatch\n"
-                f"  ❌ embed_dim={embed_dim} is not divisible by num_heads={num_heads} (remainder={embed_dim % num_heads})\n"
-                f"  💡 Multi-head attention splits embed_dim equally among heads, so embed_dim must be a multiple of num_heads\n"
-                f"  🔧 Try: embed_dim={num_heads * (embed_dim // num_heads + 1)} (next valid size) or num_heads=1"
+                f"embed_dim={embed_dim} is not divisible by num_heads={num_heads} (remainder={embed_dim % num_heads})\n"
+                f"Multi-head attention splits embed_dim equally among heads, so embed_dim must be a multiple of num_heads\n"
+                f"Try: embed_dim={num_heads * (embed_dim // num_heads + 1)} (next valid size) or num_heads=1"
             )
 
         self.embed_dim = embed_dim

@@ -119,8 +119,8 @@ class CharTokenizer(Tokenizer):
         for text in corpus:
             all_chars.update(text)
             
-            for char in sorted(all_chars):
-                self._add_token(char)
+        for char in sorted(all_chars):
+            self._add_token(char)
                 
         #* update vocab builder flag
         self.is_vocab_built = True

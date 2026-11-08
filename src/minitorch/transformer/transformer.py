@@ -4,14 +4,9 @@ import numpy as np
 
 from minitorch.attention import MultiHeadAttention
 from minitorch.activations import GELU
-from minitorch.dataloader import DataLoader, TensorDataset
 from minitorch.embeddings import EmbeddingLayer
 from minitorch.tensor import Tensor
-from minitorch.tokenizers import CharTokenizer
-from minitorch.training import Trainer, CosineScheduler
-from minitorch.losses import SoftMaxCrossEntropy
-from minitorch.nn import Linear, Module, LayerNormalization, Dropout, Parameter, Sequential
-from minitorch.optim import SGD, AdamW
+from minitorch.nn import Linear, Module, LayerNormalization, Dropout, Sequential
 
 
 rng = np.random.default_rng(seed=42)  # For reproducibility in tests
@@ -162,7 +157,7 @@ class GPT(Module):
         #* Un-embedding projection head to map back to vocabulary logits
         self.unembedding_head = Linear(embed_dim, vocab_size, bias=False)
         
-    def forward(self, inputs: Tensor, mask: Tensor | None = None) -> tuple[Tensor, Tensor | None]:
+    def forward(self, inputs: Tensor, mask: Tensor | None = None) -> Tensor:
         """
         Forward pass through the GPT model.
 
@@ -212,7 +207,7 @@ class GPT(Module):
             if top_k < len(scaled_logits):
                 #* Keep only the top_k logits
                 cutoff = np.sort(scaled_logits)[-min(top_k, len(scaled_logits))]
-                scaled_logits[scaled_logits < cutoff] = -np.inf  # Mask out lower logits
+                scaled_logits[scaled_logits <= cutoff] = -np.inf  # Mask out lower logits
         
         centred_logits = scaled_logits - np.max(scaled_logits)  # For numerical stability
         probabilities = np.exp(centred_logits)
@@ -239,112 +234,3 @@ class GPT(Module):
             next_token = np.array([[sampled_token]])
             current_tokens = Tensor(np.concatenate([current_tokens.data, next_token], axis=1))
         return current_tokens
-    
-    
-    
-if __name__ == "__main__":
-    x = Tensor(np.ones((1, 3, 3)))
-    mask = Tensor(np.tril(np.ones((3,3)))[np.newaxis, :, :])
-    print(mask)
-    out = np.where(mask.data, x.data, -np.inf)
-    print(np.exp(out) / np.exp(out).sum())
-    
-    
-    # print(mask)
-    # out = Tensor.masked_fill(x, mask, filler=-5.0)
-    # print(out.data[0,0,1], out.data[0,1,0])
-    # assert out.data[0, 0, 1] == -5.0 and out.data[0, 1, 0] == 1.0
-    # text_path = "C:\\Users\\User\\Downloads\\Swahili_Corpus_combined.txt"
-    # with open(text_path, 'r', encoding='utf-8') as f:
-    #     text = f.read()
-        
-    # text = text[:1000]
-    # #* split into training and val sets
-    # n = 0.95
-    # text_len = len(text)
-    
-    # chars = sorted(set(text))
-    # max_epochs = 100
-    # eval_iters = 10
-    # context_length, batch_size, embed_dim = 12,8,64
-    # # #* tokenize the text
-    # tokenizer = CharTokenizer() #* character level tokenization
-    # tokenizer.build_vocab([text])
-    # vocab_size = tokenizer.vocab_size
-    
-    
-    # # #* get the train and val loaders
-    # data = Tensor(tokenizer.encode(text))
-    # train_data = data[:int(n*data.shape[0])]
-    # val_data = data[int(n*data.shape[0]):]
-    
-    # def prepare_data(dataset: Tensor, context_length: int, stride:int =1) -> tuple[Tensor, Tensor]:
-    #     start = range(0, dataset.shape[0] - context_length, stride)
-    #     x = np.stack([dataset[i:i+context_length].data for i in start])
-    #     y = np.stack([dataset[i+1:i+1+context_length].data for i in start])
-    #     return Tensor(x), Tensor(y)
-
-    
-    # train_features, train_targets = prepare_data(train_data, context_length)
-    # val_features, val_targets = prepare_data(val_data, context_length)
-    
-    # train_loader = DataLoader(TensorDataset([train_features, train_targets]), batch_size=batch_size, shuffle=True)
-    # val_loader = DataLoader(TensorDataset([val_features, val_targets]), batch_size=batch_size, shuffle=False)
-    
-    # gpt = GPT(vocab_size=vocab_size, embed_dim=embed_dim, num_heads=8,
-    #             num_layers=6, max_seq_len=context_length, dropout=0.2)
-    
-    # optimizer = AdamW(gpt.parameters(), weight_decay=0.1)
-    # scheduler = CosineScheduler(max_lr=1e-3, min_lr=4e-5, total_epochs=max_epochs)
-    # loss_fn = SoftMaxCrossEntropy()
-    # trainer = Trainer(gpt, optimizer, loss_fn, scheduler=scheduler, grad_clip_norm=1.0)
-    
-    # # #* ###########################################################
-    # #* training loop
-    # # print("Epoch          | Training Loss         | Validation Loss | ")
-    # # print("-" * 60)
-
-    # # for i in range(max_epochs):        
-    # #     training_loss = trainer.train_epoch(train_loader, accumulation_steps=2)
-    # #     validation_loss,_ = trainer.evaluate(val_loader)
-    
-    # #     if (i+1) % eval_iters == 0 or (i+1) == 1:
-    # #         print(f'{i+1}             |   {training_loss:.4f}             | {validation_loss:.4f}')
-            
-            
-            
-        
-    # # Obtain one batch
-    # features, targets = next(iter(train_loader))
-
-    # # Disable dropout
-    # gpt.eval(mode=False)
-
-    # # Use a fixed learning rate
-    # optimizer.lr = 1e-3
-
-    # for step in range(500):
-
-    #     optimizer.zero_grad()
-
-    #     logits = gpt(features)
-
-    #     logits = logits.reshape(
-    #         -1,
-    #         vocab_size
-    #     )
-
-    #     loss = loss_fn(
-    #         logits,
-    #         targets.reshape(-1)
-    #     )
-
-    #     loss.backward()
-
-    #     optimizer.step()
-
-    #     if step % 25 == 0:
-    #         print(
-    #             f"Step {step:4d} | "
-    #             f"Loss {float(loss.data):.6f}"
-    #         )
